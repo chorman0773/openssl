@@ -21,6 +21,7 @@ int ERR_load_EVP_strings(void);
  */
 # define EVP_F_AESNI_INIT_KEY                             165
 # define EVP_F_AES_GCM_CTRL                               196
+# define EVP_F_AES_GCM_TLS_CIPHER                         207
 # define EVP_F_AES_INIT_KEY                               133
 # define EVP_F_AES_OCB_CIPHER                             169
 # define EVP_F_AES_T4_INIT_KEY                            178
@@ -38,15 +39,22 @@ int ERR_load_EVP_strings(void);
 # define EVP_F_DO_SIGVER_INIT                             161
 # define EVP_F_ENC_NEW                                    199
 # define EVP_F_EVP_CIPHERINIT_EX                          123
+# define EVP_F_EVP_CIPHER_ASN1_TO_PARAM                   204
 # define EVP_F_EVP_CIPHER_CTX_COPY                        163
 # define EVP_F_EVP_CIPHER_CTX_CTRL                        124
 # define EVP_F_EVP_CIPHER_CTX_SET_KEY_LENGTH              122
+# define EVP_F_EVP_CIPHER_PARAM_TO_ASN1                   205
 # define EVP_F_EVP_DECRYPTFINAL_EX                        101
 # define EVP_F_EVP_DECRYPTUPDATE                          166
 # define EVP_F_EVP_DIGESTFINALXOF                         174
 # define EVP_F_EVP_DIGESTINIT_EX                          128
 # define EVP_F_EVP_ENCRYPTFINAL_EX                        127
 # define EVP_F_EVP_ENCRYPTUPDATE                          167
+# define EVP_F_EVP_MAC_CTRL                               209
+# define EVP_F_EVP_MAC_CTRL_STR                           210
+# define EVP_F_EVP_MAC_CTX_COPY                           211
+# define EVP_F_EVP_MAC_CTX_NEW                            213
+# define EVP_F_EVP_MAC_INIT                               212
 # define EVP_F_EVP_MD_CTX_COPY_EX                         110
 # define EVP_F_EVP_MD_SIZE                                162
 # define EVP_F_EVP_OPENINIT                               102
@@ -79,6 +87,8 @@ int ERR_load_EVP_strings(void);
 # define EVP_F_EVP_PKEY_GET0_POLY1305                     184
 # define EVP_F_EVP_PKEY_GET0_RSA                          121
 # define EVP_F_EVP_PKEY_GET0_SIPHASH                      172
+# define EVP_F_EVP_PKEY_GET_RAW_PRIVATE_KEY               202
+# define EVP_F_EVP_PKEY_GET_RAW_PUBLIC_KEY                203
 # define EVP_F_EVP_PKEY_KEYGEN                            146
 # define EVP_F_EVP_PKEY_KEYGEN_INIT                       147
 # define EVP_F_EVP_PKEY_METH_ADD0                         194
@@ -92,6 +102,7 @@ int ERR_load_EVP_strings(void);
 # define EVP_F_EVP_PKEY_PARAM_CHECK                       189
 # define EVP_F_EVP_PKEY_PUBLIC_CHECK                      190
 # define EVP_F_EVP_PKEY_SET1_ENGINE                       187
+# define EVP_F_EVP_PKEY_SET_ALIAS_TYPE                    206
 # define EVP_F_EVP_PKEY_SIGN                              140
 # define EVP_F_EVP_PKEY_SIGN_INIT                         141
 # define EVP_F_EVP_PKEY_VERIFY                            142
@@ -100,16 +111,20 @@ int ERR_load_EVP_strings(void);
 # define EVP_F_EVP_PKEY_VERIFY_RECOVER_INIT               145
 # define EVP_F_EVP_SIGNFINAL                              107
 # define EVP_F_EVP_VERIFYFINAL                            108
+# define EVP_F_GMAC_CTRL                                  215
 # define EVP_F_INT_CTX_NEW                                157
 # define EVP_F_OK_NEW                                     200
 # define EVP_F_PKCS5_PBE_KEYIVGEN                         117
 # define EVP_F_PKCS5_V2_PBE_KEYIVGEN                      118
 # define EVP_F_PKCS5_V2_PBKDF2_KEYIVGEN                   164
 # define EVP_F_PKCS5_V2_SCRYPT_KEYIVGEN                   180
+# define EVP_F_PKEY_MAC_INIT                              214
 # define EVP_F_PKEY_SET_TYPE                              158
+# define EVP_F_POLY1305_CTRL                              216
 # define EVP_F_RC2_MAGIC_TO_METH                          109
 # define EVP_F_RC5_CTRL                                   125
 # define EVP_F_S390X_AES_GCM_CTRL                         201
+# define EVP_F_S390X_AES_GCM_TLS_CIPHER                   208
 # define EVP_F_UPDATE                                     173
 
 /*
@@ -120,6 +135,7 @@ int ERR_load_EVP_strings(void);
 # define EVP_R_BAD_DECRYPT                                100
 # define EVP_R_BUFFER_TOO_SMALL                           155
 # define EVP_R_CAMELLIA_KEY_SETUP_FAILED                  157
+# define EVP_R_CIPHER_NOT_GCM_MODE                        184
 # define EVP_R_CIPHER_PARAMETER_ERROR                     122
 # define EVP_R_COMMAND_NOT_SUPPORTED                      147
 # define EVP_R_COPY_ERROR                                 173
@@ -139,6 +155,7 @@ int ERR_load_EVP_strings(void);
 # define EVP_R_EXPECTING_A_POLY1305_KEY                   164
 # define EVP_R_EXPECTING_A_SIPHASH_KEY                    175
 # define EVP_R_FIPS_MODE_NOT_SUPPORTED                    167
+# define EVP_R_GET_RAW_KEY_FAILED                         182
 # define EVP_R_ILLEGAL_SCRYPT_PARAMETERS                  171
 # define EVP_R_INITIALIZATION_ERROR                       134
 # define EVP_R_INPUT_NOT_INITIALIZED                      111
@@ -168,6 +185,7 @@ int ERR_load_EVP_strings(void);
 # define EVP_R_PRIVATE_KEY_DECODE_ERROR                   145
 # define EVP_R_PRIVATE_KEY_ENCODE_ERROR                   146
 # define EVP_R_PUBLIC_KEY_NOT_RSA                         106
+# define EVP_R_TOO_MANY_RECORDS                           183
 # define EVP_R_UNKNOWN_CIPHER                             160
 # define EVP_R_UNKNOWN_DIGEST                             161
 # define EVP_R_UNKNOWN_OPTION                             169

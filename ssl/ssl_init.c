@@ -129,8 +129,8 @@ DEFINE_RUN_ONCE_STATIC(ossl_init_load_ssl_strings)
             "ERR_load_SSL_strings()\n");
 # endif
     ERR_load_SSL_strings();
-#endif
     ssl_strings_inited = 1;
+#endif
     return 1;
 }
 
@@ -199,7 +199,8 @@ int OPENSSL_init_ssl(uint64_t opts, const OPENSSL_INIT_SETTINGS * settings)
                              | OPENSSL_INIT_LOAD_CONFIG
 #endif
                              | OPENSSL_INIT_ADD_ALL_CIPHERS
-                             | OPENSSL_INIT_ADD_ALL_DIGESTS,
+                             | OPENSSL_INIT_ADD_ALL_DIGESTS
+                             | OPENSSL_INIT_ADD_ALL_MACS,
                              settings))
         return 0;
 

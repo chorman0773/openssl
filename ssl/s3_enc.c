@@ -155,7 +155,7 @@ int ssl3_change_cipher_state(SSL *s, int which)
         RECORD_LAYER_reset_read_sequence(&s->rlayer);
         mac_secret = &(s->s3->read_mac_secret[0]);
     } else {
-        s->statem.invalid_enc_write_ctx = 1;
+        s->statem.enc_write_state = ENC_WRITE_STATE_INVALID;
         if (s->enc_write_ctx != NULL) {
             reuse_dd = 1;
         } else if ((s->enc_write_ctx = EVP_CIPHER_CTX_new()) == NULL) {
@@ -238,7 +238,7 @@ int ssl3_change_cipher_state(SSL *s, int which)
         goto err;
     }
 
-    s->statem.invalid_enc_write_ctx = 0;
+    s->statem.enc_write_state = ENC_WRITE_STATE_VALID;
     OPENSSL_cleanse(exp_key, sizeof(exp_key));
     OPENSSL_cleanse(exp_iv, sizeof(exp_iv));
     return 1;
@@ -442,15 +442,16 @@ size_t ssl3_final_finish_mac(SSL *s, const char *sender, size_t len,
     if (!EVP_MD_CTX_copy_ex(ctx, s->s3->handshake_dgst)) {
         SSLfatal(s, SSL_AD_INTERNAL_ERROR, SSL_F_SSL3_FINAL_FINISH_MAC,
                  ERR_R_INTERNAL_ERROR);
-        return 0;
+        ret = 0;
+        goto err;
     }
 
     ret = EVP_MD_CTX_size(ctx);
     if (ret < 0) {
         SSLfatal(s, SSL_AD_INTERNAL_ERROR, SSL_F_SSL3_FINAL_FINISH_MAC,
                  ERR_R_INTERNAL_ERROR);
-        EVP_MD_CTX_reset(ctx);
-        return 0;
+        ret = 0;
+        goto err;
     }
 
     if ((sender != NULL && EVP_DigestUpdate(ctx, sender, len) <= 0)
@@ -463,6 +464,7 @@ size_t ssl3_final_finish_mac(SSL *s, const char *sender, size_t len,
         ret = 0;
     }
 
+ err:
     EVP_MD_CTX_free(ctx);
 
     return ret;

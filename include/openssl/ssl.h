@@ -48,7 +48,6 @@ extern "C" {
 # define SSL_MIN_RSA_MODULUS_LENGTH_IN_BYTES     (512/8)
 # define SSL_MAX_KEY_ARG_LENGTH                  8
 # define SSL_MAX_MASTER_KEY_LENGTH               48
-# define TLS13_MAX_RESUMPTION_MASTER_LENGTH      64
 
 /* The maximum number of encrypt/decrypt pipelines we can support */
 # define SSL_MAX_PIPELINES  32
@@ -368,6 +367,12 @@ typedef int (*SSL_verify_cb)(int preverify_ok, X509_STORE_CTX *x509_ctx);
  * forbidden to prevent version rollback attacks.
  */
 # define SSL_OP_TLS_ROLLBACK_BUG                         0x00800000U
+
+/*
+ * Switches off automatic TLSv1.3 anti-replay protection for early data. This
+ * is a server-side option only (no effect on the client).
+ */
+# define SSL_OP_NO_ANTI_REPLAY                           0x01000000U
 
 # define SSL_OP_NO_SSLv3                                 0x02000000U
 # define SSL_OP_NO_TLSv1                                 0x04000000U
@@ -914,6 +919,10 @@ int SSL_CTX_set_max_early_data(SSL_CTX *ctx, uint32_t max_early_data);
 uint32_t SSL_CTX_get_max_early_data(const SSL_CTX *ctx);
 int SSL_set_max_early_data(SSL *s, uint32_t max_early_data);
 uint32_t SSL_get_max_early_data(const SSL *s);
+int SSL_CTX_set_recv_max_early_data(SSL_CTX *ctx, uint32_t recv_max_early_data);
+uint32_t SSL_CTX_get_recv_max_early_data(const SSL_CTX *ctx);
+int SSL_set_recv_max_early_data(SSL *s, uint32_t recv_max_early_data);
+uint32_t SSL_get_recv_max_early_data(const SSL *s);
 
 #ifdef __cplusplus
 }
@@ -1049,9 +1058,9 @@ typedef enum {
 /* Is the SSL_connection established? */
 # define SSL_in_connect_init(a)          (SSL_in_init(a) && !SSL_is_server(a))
 # define SSL_in_accept_init(a)           (SSL_in_init(a) && SSL_is_server(a))
-int SSL_in_init(SSL *s);
-int SSL_in_before(SSL *s);
-int SSL_is_init_finished(SSL *s);
+int SSL_in_init(const SSL *s);
+int SSL_in_before(const SSL *s);
+int SSL_is_init_finished(const SSL *s);
 
 /*
  * The following 3 states are kept in ssl->rlayer.rstate when reads fail, you
@@ -1080,8 +1089,8 @@ size_t SSL_get_peer_finished(const SSL *s, void *buf, size_t count);
 # define SSL_VERIFY_CLIENT_ONCE          0x04
 # define SSL_VERIFY_POST_HANDSHAKE       0x08
 
-# define OpenSSL_add_ssl_algorithms()    SSL_library_init()
 # if OPENSSL_API_COMPAT < 0x10100000L
+#  define OpenSSL_add_ssl_algorithms()   SSL_library_init()
 #  define SSLeay_add_ssl_algorithms()    SSL_library_init()
 # endif
 
@@ -1262,7 +1271,7 @@ DECLARE_PEM_rw(SSL_SESSION, SSL_SESSION)
 # define SSL_CTRL_SET_VERIFY_CERT_STORE          106
 # define SSL_CTRL_SET_CHAIN_CERT_STORE           107
 # define SSL_CTRL_GET_PEER_SIGNATURE_NID         108
-# define SSL_CTRL_GET_SERVER_TMP_KEY             109
+# define SSL_CTRL_GET_PEER_TMP_KEY               109
 # define SSL_CTRL_GET_RAW_CIPHERLIST             110
 # define SSL_CTRL_GET_EC_POINT_FORMATS           111
 # define SSL_CTRL_GET_CHAIN_CERTS                115
@@ -1281,6 +1290,8 @@ DECLARE_PEM_rw(SSL_SESSION, SSL_SESSION)
 # define SSL_CTRL_GET_TLSEXT_STATUS_REQ_CB_ARG   129
 # define SSL_CTRL_GET_MIN_PROTO_VERSION          130
 # define SSL_CTRL_GET_MAX_PROTO_VERSION          131
+# define SSL_CTRL_GET_SIGNATURE_NID              132
+# define SSL_CTRL_GET_TMP_KEY                    133
 # define SSL_CERT_SET_FIRST                      1
 # define SSL_CERT_SET_NEXT                       2
 # define SSL_CERT_SET_SERVER                     3
@@ -1401,10 +1412,14 @@ DECLARE_PEM_rw(SSL_SESSION, SSL_SESSION)
                      (char *)(clist))
 # define SSL_set1_client_certificate_types(s, clist, clistlen) \
         SSL_ctrl(s,SSL_CTRL_SET_CLIENT_CERT_TYPES,clistlen,(char *)(clist))
+# define SSL_get_signature_nid(s, pn) \
+        SSL_ctrl(s,SSL_CTRL_GET_SIGNATURE_NID,0,pn)
 # define SSL_get_peer_signature_nid(s, pn) \
         SSL_ctrl(s,SSL_CTRL_GET_PEER_SIGNATURE_NID,0,pn)
-# define SSL_get_server_tmp_key(s, pk) \
-        SSL_ctrl(s,SSL_CTRL_GET_SERVER_TMP_KEY,0,pk)
+# define SSL_get_peer_tmp_key(s, pk) \
+        SSL_ctrl(s,SSL_CTRL_GET_PEER_TMP_KEY,0,pk)
+# define SSL_get_tmp_key(s, pk) \
+        SSL_ctrl(s,SSL_CTRL_GET_TMP_KEY,0,pk)
 # define SSL_get0_raw_cipherlist(s, plst) \
         SSL_ctrl(s,SSL_CTRL_GET_RAW_CIPHERLIST,0,plst)
 # define SSL_get0_ec_point_formats(s, plst) \
@@ -1425,6 +1440,12 @@ DECLARE_PEM_rw(SSL_SESSION, SSL_SESSION)
         SSL_ctrl(s, SSL_CTRL_GET_MIN_PROTO_VERSION, 0, NULL)
 # define SSL_get_max_proto_version(s) \
         SSL_ctrl(s, SSL_CTRL_GET_MAX_PROTO_VERSION, 0, NULL)
+
+/* Backwards compatibility, original 1.1.0 names */
+# define SSL_CTRL_GET_SERVER_TMP_KEY \
+         SSL_CTRL_GET_PEER_TMP_KEY
+# define SSL_get_server_tmp_key(s, pk) \
+         SSL_get_peer_tmp_key(s, pk)
 
 /*
  * The following symbol names are old and obsolete. They are kept
@@ -1889,7 +1910,8 @@ int SSL_renegotiate_abbreviated(SSL *s);
 __owur int SSL_renegotiate_pending(SSL *s);
 int SSL_shutdown(SSL *s);
 __owur int SSL_verify_client_post_handshake(SSL *s);
-void SSL_force_post_handshake_auth(SSL *s);
+void SSL_CTX_set_post_handshake_auth(SSL_CTX *ctx, int val);
+void SSL_set_post_handshake_auth(SSL *s, int val);
 
 __owur const SSL_METHOD *SSL_CTX_get_ssl_method(SSL_CTX *ctx);
 __owur const SSL_METHOD *SSL_get_ssl_method(SSL *s);
@@ -1903,8 +1925,8 @@ void SSL_set0_CA_list(SSL *s, STACK_OF(X509_NAME) *name_list);
 void SSL_CTX_set0_CA_list(SSL_CTX *ctx, STACK_OF(X509_NAME) *name_list);
 __owur const STACK_OF(X509_NAME) *SSL_get0_CA_list(const SSL *s);
 __owur const STACK_OF(X509_NAME) *SSL_CTX_get0_CA_list(const SSL_CTX *ctx);
-__owur int SSL_add1_CA_list(SSL *ssl, const X509 *x);
-__owur int SSL_CTX_add1_CA_list(SSL_CTX *ctx, const X509 *x);
+__owur int SSL_add1_to_CA_list(SSL *ssl, const X509 *x);
+__owur int SSL_CTX_add1_to_CA_list(SSL_CTX *ctx, const X509 *x);
 __owur const STACK_OF(X509_NAME) *SSL_get0_peer_CA_list(const SSL *s);
 
 void SSL_set_client_CA_list(SSL *s, STACK_OF(X509_NAME) *name_list);
@@ -2382,14 +2404,18 @@ int SSL_CTX_set_session_ticket_cb(SSL_CTX *ctx,
 int SSL_SESSION_set1_ticket_appdata(SSL_SESSION *ss, const void *data, size_t len);
 int SSL_SESSION_get0_ticket_appdata(SSL_SESSION *ss, void **data, size_t *len);
 
-extern const char SSL_version_str[];
-
-
-
 typedef unsigned int (*DTLS_timer_cb)(SSL *s, unsigned int timer_us);
 
 void DTLS_set_timer_cb(SSL *s, DTLS_timer_cb cb);
 
+
+typedef int (*SSL_allow_early_data_cb_fn)(SSL *s, void *arg);
+void SSL_CTX_set_allow_early_data_cb(SSL_CTX *ctx,
+                                     SSL_allow_early_data_cb_fn cb,
+                                     void *arg);
+void SSL_set_allow_early_data_cb(SSL *s,
+                                 SSL_allow_early_data_cb_fn cb,
+                                 void *arg);
 
 # ifdef  __cplusplus
 }

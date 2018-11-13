@@ -67,10 +67,10 @@ typedef enum OPTION_choice {
 const OPTIONS x509_options[] = {
     {"help", OPT_HELP, '-', "Display this summary"},
     {"inform", OPT_INFORM, 'f',
-     "Input format - default PEM (one of DER, NET or PEM)"},
+     "Input format - default PEM (one of DER or PEM)"},
     {"in", OPT_IN, '<', "Input file - default stdin"},
     {"outform", OPT_OUTFORM, 'f',
-     "Output format - default PEM (one of DER, NET or PEM)"},
+     "Output format - default PEM (one of DER or PEM)"},
     {"out", OPT_OUT, '>', "Output file - default stdout"},
     {"keyform", OPT_KEYFORM, 'F', "Private key format - default PEM"},
     {"passin", OPT_PASSIN, 's', "Private key password/pass-phrase source"},
@@ -916,7 +916,7 @@ static ASN1_INTEGER *x509_load_serial(const char *CAfile,
     BIGNUM *serial = NULL;
 
     if (serialfile == NULL) {
-        const char *p = strchr(CAfile, '.');
+        const char *p = strrchr(CAfile, '.');
         size_t len = p != NULL ? (size_t)(p - CAfile) : strlen(CAfile);
 
         buf = app_malloc(len + sizeof(POSTFIX), "serial# buffer");

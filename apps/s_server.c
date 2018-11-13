@@ -192,8 +192,10 @@ static int psk_find_session_cb(SSL *ssl, const unsigned char *identity,
     const SSL_CIPHER *cipher = NULL;
 
     if (strlen(psk_identity) != identity_len
-            || memcmp(psk_identity, identity, identity_len) != 0)
-        return 0;
+            || memcmp(psk_identity, identity, identity_len) != 0) {
+        *sess = NULL;
+        return 1;
+    }
 
     if (psksess != NULL) {
         SSL_SESSION_up_ref(psksess);
@@ -748,7 +750,8 @@ typedef enum OPTION_choice {
     OPT_ID_PREFIX, OPT_SERVERNAME, OPT_SERVERNAME_FATAL,
     OPT_CERT2, OPT_KEY2, OPT_NEXTPROTONEG, OPT_ALPN,
     OPT_SRTP_PROFILES, OPT_KEYMATEXPORT, OPT_KEYMATEXPORTLEN,
-    OPT_KEYLOG_FILE, OPT_MAX_EARLY, OPT_EARLY_DATA, OPT_S_NUM_TICKETS,
+    OPT_KEYLOG_FILE, OPT_MAX_EARLY, OPT_RECV_MAX_EARLY, OPT_EARLY_DATA,
+    OPT_S_NUM_TICKETS, OPT_ANTI_REPLAY, OPT_NO_ANTI_REPLAY,
     OPT_R_ENUM,
     OPT_S_ENUM,
     OPT_V_ENUM,
@@ -954,10 +957,14 @@ const OPTIONS s_server_options[] = {
 #endif
     {"keylogfile", OPT_KEYLOG_FILE, '>', "Write TLS secrets to file"},
     {"max_early_data", OPT_MAX_EARLY, 'n',
-     "The maximum number of bytes of early data"},
+     "The maximum number of bytes of early data as advertised in tickets"},
+    {"recv_max_early_data", OPT_RECV_MAX_EARLY, 'n',
+     "The maximum number of bytes of early data (hard limit)"},
     {"early_data", OPT_EARLY_DATA, '-', "Attempt to read early data"},
     {"num_tickets", OPT_S_NUM_TICKETS, 'n',
      "The number of TLSv1.3 session tickets that a server will automatically  issue" },
+    {"anti_replay", OPT_ANTI_REPLAY, '-', "Switch on anti-replay protection (default)"},
+    {"no_anti_replay", OPT_NO_ANTI_REPLAY, '-', "Switch off anti-replay protection"},
     {NULL, OPT_EOF, 0, NULL}
 };
 
@@ -1038,7 +1045,7 @@ int s_server_main(int argc, char *argv[])
     unsigned int split_send_fragment = 0, max_pipelines = 0;
     const char *s_serverinfo_file = NULL;
     const char *keylog_file = NULL;
-    int max_early_data = -1;
+    int max_early_data = -1, recv_max_early_data = -1;
     char *psksessf = NULL;
 
     /* Init of few remaining global variables */
@@ -1258,6 +1265,8 @@ int s_server_main(int argc, char *argv[])
             break;
         case OPT_S_CASES:
         case OPT_S_NUM_TICKETS:
+        case OPT_ANTI_REPLAY:
+        case OPT_NO_ANTI_REPLAY:
             if (ssl_args == NULL)
                 ssl_args = sk_OPENSSL_STRING_new_null();
             if (ssl_args == NULL
@@ -1565,6 +1574,13 @@ int s_server_main(int argc, char *argv[])
                 goto end;
             }
             break;
+        case OPT_RECV_MAX_EARLY:
+            recv_max_early_data = atoi(opt_arg());
+            if (recv_max_early_data < 0) {
+                BIO_printf(bio_err, "Invalid value for recv_max_early_data\n");
+                goto end;
+            }
+            break;
         case OPT_EARLY_DATA:
             early_data = 1;
             if (max_early_data == -1)
@@ -1605,6 +1621,11 @@ int s_server_main(int argc, char *argv[])
         goto end;
     }
 #endif
+    if (early_data && (www > 0 || rev)) {
+        BIO_printf(bio_err,
+                   "Can't use -early_data in combination with -www, -WWW, -HTTP, or -rev\n");
+        goto end;
+    }
 
 #ifndef OPENSSL_NO_SCTP
     if (protocol == IPPROTO_SCTP) {
@@ -2105,6 +2126,8 @@ int s_server_main(int argc, char *argv[])
 
     if (max_early_data >= 0)
         SSL_CTX_set_max_early_data(ctx, max_early_data);
+    if (recv_max_early_data >= 0)
+        SSL_CTX_set_recv_max_early_data(ctx, recv_max_early_data);
 
     if (rev)
         server_cb = rev_body;
@@ -2949,8 +2972,10 @@ static int www_body(int s, int stype, int prot, unsigned char *context)
 
     if (context != NULL
         && !SSL_set_session_id_context(con, context,
-                                       strlen((char *)context)))
+                                       strlen((char *)context))) {
+        SSL_free(con);
         goto err;
+    }
 
     sbio = BIO_new_socket(s, BIO_NOCLOSE);
     if (s_nbio_test) {
@@ -2962,7 +2987,7 @@ static int www_body(int s, int stype, int prot, unsigned char *context)
     SSL_set_bio(con, sbio, sbio);
     SSL_set_accept_state(con);
 
-    /* SSL_set_fd(con,s); */
+    /* No need to free |con| after this. Done by BIO_free(ssl_bio) */
     BIO_set_ssl(ssl_bio, con, BIO_CLOSE);
     BIO_push(io, ssl_bio);
 #ifdef CHARSET_EBCDIC
@@ -3318,6 +3343,7 @@ static int rev_body(int s, int stype, int prot, unsigned char *context)
     if (context != NULL
         && !SSL_set_session_id_context(con, context,
                                        strlen((char *)context))) {
+        SSL_free(con);
         ERR_print_errors(bio_err);
         goto err;
     }
@@ -3326,6 +3352,7 @@ static int rev_body(int s, int stype, int prot, unsigned char *context)
     SSL_set_bio(con, sbio, sbio);
     SSL_set_accept_state(con);
 
+    /* No need to free |con| after this. Done by BIO_free(ssl_bio) */
     BIO_set_ssl(ssl_bio, con, BIO_CLOSE);
     BIO_push(io, ssl_bio);
 #ifdef CHARSET_EBCDIC

@@ -7,6 +7,7 @@ language: c
 cache: ccache
 git:
     submodules: false
+    quiet: true
 
 before_install:
     - if [ -n "$COVERALLS" ]; then
@@ -27,7 +28,7 @@ compiler:
 env:
     - CONFIG_OPTS="" DESTDIR="_install"
     - CONFIG_OPTS="no-asm -Werror --debug no-afalgeng no-shared enable-crypto-mdebug enable-rc5 enable-md2"
-    - CONFIG_OPTS="no-asm no-makedepend --strict-warnings" BUILDONLY="yes" CHECKDOCS="yes" GENERATE="yes"
+    - CONFIG_OPTS="no-asm no-makedepend --strict-warnings -std=c89 -D_DEFAULT_SOURCE" BUILDONLY="yes" CHECKDOCS="yes" GENERATE="yes"
 
 matrix:
     include:
@@ -186,8 +187,8 @@ script:
           echo -e '+\057 MAKE UPDATE OK';
       else
           echo -e '+\057 MAKE UPDATE FAILED'; false;
-      fi;
-      git diff --exit-code
+      fi
+    - git diff --exit-code
     - if [ -n "$CHECKDOCS" ]; then
           if $make doc-nits; then
               echo -e '+\057\057 MAKE DOC-NITS OK';

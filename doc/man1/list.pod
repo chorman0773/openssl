@@ -13,6 +13,7 @@ B<openssl list>
 [B<-commands>]
 [B<-digest-commands>]
 [B<-digest-algorithms>]
+[B<-mac-algorithms>]
 [B<-cipher-commands>]
 [B<-cipher-algorithms>]
 [B<-public-key-algorithms>]
@@ -49,9 +50,14 @@ as input to the L<dgst(1)> or L<speed(1)> commands.
 =item B<-digest-algorithms>
 
 Display a list of message digest algorithms.
-If a line is of the form
-  foo => bar
-then B<foo> is an alias for the official algorithm name, B<bar>.
+If a line is of the form C<foo =E<gt> bar> then B<foo> is an alias for the
+official algorithm name, B<bar>.
+
+=item B<-mac-algorithms>
+
+Display a list of message authentication code algorithms.
+If a line is of the form C<foo =E<gt> bar> then B<foo> is an alias for the
+official algorithm name, B<bar>.
 
 =item B<-cipher-commands>
 
@@ -61,9 +67,8 @@ to the L<dgst(1)> or L<speed(1)> commands.
 =item B<-cipher-algorithms>
 
 Display a list of cipher algorithms.
-If a line is of the form
-  foo => bar
-then B<foo> is an alias for the official algorithm name, B<bar>.
+If a line is of the form C<foo =E<gt> bar> then B<foo> is an alias for the
+official algorithm name, B<bar>.
 
 =item B<-public-key-algorithms>
 
@@ -79,6 +84,11 @@ without an associated ASN.1 method, for example, KDF algorithms.
 
 Display a list of disabled features, those that were compiled out
 of the installation.
+
+=item B<-objects>
+
+Display a list of built in objects, i.e. OIDs with names.  They're listed in the
+format described in L<config(5)/ASN1 Object Configuration Module>.
 
 =back
 

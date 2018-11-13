@@ -1,5 +1,5 @@
 /*
- * Copyright 2016-20018 The OpenSSL Project Authors. All Rights Reserved.
+ * Copyright 2016-2018 The OpenSSL Project Authors. All Rights Reserved.
  *
  * Licensed under the OpenSSL license (the "License").  You may not use
  * this file except in compliance with the License.  You can obtain a copy
@@ -38,7 +38,6 @@
  * POWER6               4.92
  * POWER7               4.50
  * POWER8               4.10
- * POWER9               3.14
  *
  * z10                  11.2
  * z196+                7.30

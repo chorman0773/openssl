@@ -3466,6 +3466,15 @@ long ssl3_ctrl(SSL *s, int cmd, long larg, void *parg)
         break;
 #endif                          /* !OPENSSL_NO_EC */
     case SSL_CTRL_SET_TLSEXT_HOSTNAME:
+        /*
+         * TODO(OpenSSL1.2)
+         * This API is only used for a client to set what SNI it will request
+         * from the server, but we currently allow it to be used on servers
+         * as well, which is a programming error.  Currently we just clear
+         * the field in SSL_do_handshake() for server SSLs, but when we can
+         * make ABI-breaking changes, we may want to make use of this API
+         * an error on server SSLs.
+         */
         if (larg == TLSEXT_NAMETYPE_host_name) {
             size_t len;
 
@@ -3672,9 +3681,15 @@ long ssl3_ctrl(SSL *s, int cmd, long larg, void *parg)
         *(int *)parg = s->s3->tmp.peer_sigalg->hash;
         return 1;
 
-    case SSL_CTRL_GET_SERVER_TMP_KEY:
+    case SSL_CTRL_GET_SIGNATURE_NID:
+        if (s->s3->tmp.sigalg == NULL)
+            return 0;
+        *(int *)parg = s->s3->tmp.sigalg->hash;
+        return 1;
+
+    case SSL_CTRL_GET_PEER_TMP_KEY:
 #if !defined(OPENSSL_NO_DH) || !defined(OPENSSL_NO_EC)
-        if (s->server || s->session == NULL || s->s3->peer_tmp == NULL) {
+        if (s->session == NULL || s->s3->peer_tmp == NULL) {
             return 0;
         } else {
             EVP_PKEY_up_ref(s->s3->peer_tmp);
@@ -3684,6 +3699,20 @@ long ssl3_ctrl(SSL *s, int cmd, long larg, void *parg)
 #else
         return 0;
 #endif
+
+    case SSL_CTRL_GET_TMP_KEY:
+#if !defined(OPENSSL_NO_DH) || !defined(OPENSSL_NO_EC)
+        if (s->session == NULL || s->s3->tmp.pkey == NULL) {
+            return 0;
+        } else {
+            EVP_PKEY_up_ref(s->s3->tmp.pkey);
+            *(EVP_PKEY **)parg = s->s3->tmp.pkey;
+            return 1;
+        }
+#else
+        return 0;
+#endif
+
 #ifndef OPENSSL_NO_EC
     case SSL_CTRL_GET_EC_POINT_FORMATS:
         {
@@ -4559,7 +4588,7 @@ int ssl_fill_hello_random(SSL *s, int server, unsigned char *result, size_t len,
     } else {
         ret = RAND_bytes(result, len);
     }
-#ifndef OPENSSL_NO_TLS13DOWNGRADE
+
     if (ret > 0) {
         if (!ossl_assert(sizeof(tls11downgrade) < len)
                 || !ossl_assert(sizeof(tls12downgrade) < len))
@@ -4571,7 +4600,7 @@ int ssl_fill_hello_random(SSL *s, int server, unsigned char *result, size_t len,
             memcpy(result + len - sizeof(tls11downgrade), tls11downgrade,
                    sizeof(tls11downgrade));
     }
-#endif
+
     return ret;
 }
 
@@ -4612,6 +4641,7 @@ int ssl_generate_master_secret(SSL *s, unsigned char *pms, size_t pmslen,
         if (!s->method->ssl3_enc->generate_master_secret(s,
                     s->session->master_key,pskpms, pskpmslen,
                     &s->session->master_key_length)) {
+            OPENSSL_clear_free(pskpms, pskpmslen);
             /* SSLfatal() already called */
             goto err;
         }
